@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rarashome - Teka-Teki & Belajar</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #e53e3e; /* Merah */
+            --color-secondary: #fefefe; /* Putih */
+            --color-bg-dark: #1a202c; /* Hitam/Abu Tua */
+            --color-accent: #f6ad55; /* Kuning (untuk kartun/Bibble) */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-dark);
+            color: var(--color-secondary);
+            min-height: 100vh;
+        }
+        .app-container {
+            min-height: calc(100vh - 80px);
+            transition: all 0.3s ease;
+        }
+        .card {
+            background-color: var(--color-secondary);
+            color: var(--color-bg-dark);
+            padding: 1.5rem;
+            border-radius: 1.5rem; /* Lebih bulat, kesan kartun */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+        }
+        .btn-nav {
+            padding: 0.75rem 1.25rem;
+            border-radius: 9999px; /* Pill shape */
+            font-weight: 700;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .btn-nav.active {
+            background-color: var(--color-primary);
+            color: var(--color-secondary);
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(229, 62, 62, 0.5);
+        }
+        /* Style untuk Pesan Bibble */
+        #bibble-guide {
+            background-color: var(--color-accent);
+            color: var(--color-bg-dark);
+            border: 3px solid var(--color-bg-dark);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            font-weight: 700;
+            border-radius: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+
+    <div id="app-wrapper" class="max-w-4xl mx-auto">
+        <!-- Header / Navigation Bar -->
+        <header class="sticky top-0 z-20 bg-gray-800 text-white shadow-2xl rounded-b-3xl">
+            <div class="p-4 flex flex-col md:flex-row justify-between items-center">
+                <h1 class="text-3xl font-black text-red-500 mb-2 md:mb-0">Rarashome 🏠</h1>
+                <div class="flex flex-wrap justify-center space-x-2 text-sm md:text-base">
+                    <button onclick="setView('game')" class="btn-nav bg-gray-700 hover:bg-gray-600 active:bg-red-500">Game Teka-Teki 🕹️</button>
+                    <button onclick="setView('belajar')" class="btn-nav bg-gray-700 hover:bg-gray-600">Belajar 📚</button>
+                    <button onclick="setView('kuis')" class="btn-nav bg-gray-700 hover:bg-gray-600">Kuis 🧠</button>
+                    <button onclick="setView('profil')" class="btn-nav bg-gray-700 hover:bg-gray-600">Profil 🙋</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Container Konten Aplikasi -->
+        <main id="app-container" class="p-4 md:p-8 space-y-8 app-container">
+            <div id="bibble-guide" class="p-3 mb-6 flex items-center">
+                <span class="text-3xl mr-3">😊🚌</span>
+                <span id="bibble-message" class="text-sm md:text-base">Halo! Saya Bibble. Selamat datang di zona Teka-Teki!</span>
+            </div>
+            <div id="content-area">
+                <div class="card p-12 text-center">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Memuat Rarashome...</h2>
+                    <p class="text-gray-600">Tunggu sebentar ya, Bibble sedang menyiapkan data Anda.</p>
+                </div>
+            </div>
+
+            <!-- Pesan Status/Error -->
+            <div id="status-message" class="hidden fixed bottom-4 right-4 text-white p-3 rounded-lg shadow-xl z-30"></div>
+        </main>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // setLogLevel('Debug'); // Mengaktifkan log debug Firestore
+
+        // --- Variabel Global Canvas (MANDATORY) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let firebaseConfig = null;
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.error("Gagal parse __firebase_config:", e);
+            }
+        }
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- Global State Aplikasi ---
+        let app, db, auth;
+        let userId = 'anon_user';
+        let userProfile = {
+            name: 'Pemain Rarashome',
+            highScoreHard: 0,
+            highScoreMedium: 0,
+            quizAttempts: {}, 
+            lastQuizScore: 0,
+            totalQuizAttempts: 0
+        };
+        let currentView = 'game';
+        let currentRiddleLevel = 'menu';
+
+        // --- Helpers UI ---
+        const contentArea = document.getElementById('content-area');
+        const statusMessage = document.getElementById('status-message');
+        const bibbleMessageElement = document.getElementById('bibble-message');
+        
+        function displayStatus(message, isError = false) {
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-red-600', 'bg-green-600');
+            statusMessage.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 3000);
+        }
+
+        function setBibbleMessage(message) {
+            bibbleMessageElement.textContent = message;
+        }
+
+        // --- FIREBASE & DATA MANAGEMENT ---
+
+        const USER_DATA_PATH = 'user_data';
+        const PROFILE_DOC_ID = 'user_profile';
+
+        async function initFirebase() {
+            if (!firebaseConfig) {
+                displayStatus('Database tidak terhubung.', true);
+                setView(currentView);
+                return;
+            }
+            
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Autentikasi
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // Listener untuk status autentikasi
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        setupProfileListener();
+                    } else {
+                        userId = 'anon_user_fallback_' + crypto.randomUUID();
+                        if(db) setupProfileListener();
+                    }
+                    setView(currentView);
+                });
+
+            } catch (error) {
+                console.error("Gagal menginisialisasi Firebase:", error);
+                displayStatus(`Kesalahan Firebase: ${error.message}`, true);
+                setView(currentView);
+            }
+        }
+
+        function getUserDocRef() {
+            if (!db || !userId) return null;
+            return doc(db, 'artifacts', appId, 'users', userId, USER_DATA_PATH, PROFILE_DOC_ID);
+        }
+
+        function setupProfileListener() {
+            const docRef = getUserDocRef();
+            if (!docRef) return;
+
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    userProfile = {
+                        ...userProfile,
+                        ...docSnap.data()
+                    };
+                    // Ensure quizAttempts is an object
+                    if (typeof userProfile.quizAttempts !== 'object' || userProfile.quizAttempts === null) {
+                        userProfile.quizAttempts = {};
+                    }
+                } else {
+                    saveProfile(userProfile);
+                }
+                renderContent(currentView);
+            }, (error) => {
+                console.error("Gagal mengambil data profil:", error);
+            });
+        }
+
+        async function saveProfile(data) {
+            const docRef = getUserDocRef();
+            if (!docRef) return;
+            try {
+                const dataToSave = {
+                    name: data.name || 'Pemain',
+                    highScoreHard: data.highScoreHard || 0,
+                    highScoreMedium: data.highScoreMedium || 0,
+                    lastQuizScore: data.lastQuizScore || 0,
+                    totalQuizAttempts: data.totalQuizAttempts || 0,
+                    quizAttempts: data.quizAttempts || {},
+                };
+                await setDoc(docRef, dataToSave, { merge: true });
+            } catch (error) {
+                console.error("Gagal menyimpan profil:", error);
+                displayStatus(`Gagal menyimpan profil: ${error.message}`, true);
+            }
+        }
+
+        // --- APLIKASI UTAMA (RENDER & NAVIGASI) ---
+
+        window.setView = function(viewName) {
+            currentView = viewName;
+            
+            document.querySelectorAll('.btn-nav').forEach(btn => {
+                btn.classList.remove('active', 'bg-red-500', 'text-white');
+                btn.classList.add('bg-gray-700', 'text-white');
+            });
+            const activeBtn = document.querySelector(`.btn-nav[onclick="setView('${viewName}')"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'bg-red-500', 'text-white');
+                activeBtn.classList.remove('bg-gray-700');
+            }
+
+            // Reset game/quiz state when leaving the view
+            if (viewName !== 'game') currentRiddleLevel = 'menu';
+            if (viewName !== 'kuis') clearQuizState();
+
+            renderContent(viewName);
+        }
+
+        function renderContent(view) {
+            const profile = userProfile;
+            let html = '';
+
+            switch (view) {
+                case 'game':
+                    html = renderGameView(profile);
+                    break;
+                case 'belajar':
+                    html = renderBelajar(profile);
+                    setBibbleMessage('Di sini tempat kita mencari ilmu! Pilih mata pelajaran yang kamu suka.');
+                    break;
+                case 'kuis':
+                    html = renderKuis(profile);
+                    setBibbleMessage('Uji pengetahuanmu di zona kuis! Semangat!');
+                    break;
+                case 'profil':
+                    html = renderProfil(profile);
+                    setBibbleMessage('Ini adalah data kemajuanmu, pastikan namamu sudah benar ya!');
+                    break;
+                default:
+                    html = `<div class="card bg-gray-800 p-8 text-center"><h2 class="text-2xl font-bold text-red-500">Halaman tidak ditemukan.</h2></div>`;
+            }
+            contentArea.innerHTML = html;
+            
+            // Re-initialize specific views
+            if (view === 'kuis') initQuiz();
+        }
+        
+        // ==========================================================
+        // 1. GAME VIEW (TEKA-TEKI)
+        // ==========================================================
+
+        const TEKA_TEKI_BANK = {
+            Medium: [
+                { q: "Aku punya leher tapi tak punya kepala, punya badan tapi tak punya lengan. Siapakah aku?", options: ["Pena", "Botol", "Meja", "Kemeja"], a: 3 }, // Kemeja
+                { q: "Semakin banyak diambil, semakin banyak ditinggalkan. Siapakah aku?", options: ["Uang", "Janji", "Jejak Kaki", "Waktu"], a: 2 }, // Jejak Kaki
+                { q: "Aku selalu naik tapi tidak pernah turun. Siapakah aku?", options: ["Suhu", "Usia", "Harga", "Asap"], a: 3 }, // Asap
+                { q: "Bisa melihat semua, tapi tidak punya mata. Punya telinga tapi tidak punya mulut. Siapakah aku?", options: ["Kamera", "Cermin", "Kartu", "Handphone"], a: 3 }, // Handphone
+                { q: "Apa yang bisa dipecahkan, tetapi tidak pernah dipegang?", options: ["Cermin", "Telur", "Janji", "Gelas"], a: 2 }, // Janji
+                { q: "Ada di depan mata, tapi tidak terlihat. Apakah itu?", options: ["Masa Depan", "Udara", "Baju", "Kaca"], a: 0 }, // Masa Depan
+                { q: "Aku adalah kotak yang berisi rahasia, dan harus dibuka tanpa kunci. Siapakah aku?", options: ["Laci", "Hadiah", "Kotak Musik", "Kotak Suara"], a: 1 }, // Hadiah
+                { q: "Punya banyak gigi, tapi tidak bisa makan. Siapakah aku?", options: ["Gergaji", "Kucing", "Sikat Gigi", "Pintu"], a: 0 }, // Gergaji
+                { q: "Aku ada di ujung dunia, dan juga ada di awal surga. Siapakah aku?", options: ["Huruf D", "Huruf A", "Huruf U", "Huruf S"], a: 0 }, // Huruf D
+                { q: "Pukul aku, dan aku akan memberitahu waktunya. Siapakah aku?", options: ["Jam Dinding", "Gong", "Lonceng", "Drum"], a: 2 }, // Lonceng
+            ],
+            Hard: [
+                { q: "Saya punya kota tapi tidak punya rumah, punya gunung tapi tidak punya pohon, dan punya air tapi tidak ada ikan. Siapakah saya?", options: ["Bumi", "Peta", "Buku", "Komputer"], a: 1 }, // Peta
+                { q: "Jika ada 5 apel dan Anda mengambil 3, berapa banyak yang Anda miliki?", options: ["2", "3", "5", "8"], a: 1 }, // 3
+                { q: "Seorang ayah dan anak mengalami kecelakaan mobil. Ayah meninggal, tetapi anak itu dibawa ke rumah sakit. Dokter berkata, 'Aku tidak bisa mengoperasi anak ini, dia adalah anakku.' Siapakah dokter itu?", options: ["Kakeknya", "Ibunya", "Pamannya", "Adiknya"], a: 1 }, // Ibunya
+                { q: "Apa yang ada di tengah-tengah air?", options: ["Es", "Uap", "Huruf I", "Batu"], a: 2 }, // Huruf I
+                { q: "Saya diisi ulang dengan apa yang saya tumpahkan. Siapakah saya?", options: ["Tangki Bensin", "Saringan", "Parutan", "Kapal"], a: 0 }, // Tangki Bensin
+                { q: "Di mana hari Jumat datang sebelum Kamis?", options: ["Di Inggris", "Di Sekolah", "Di Kamus", "Di Kalender"], a: 2 }, // Di Kamus
+                { q: "Apa yang harus Anda pecahkan sebelum Anda dapat menggunakannya?", options: ["Cermin", "Janji", "Telur", "Teko"], a: 2 }, // Telur
+                { q: "Bisa terbang tanpa sayap, menangis tanpa mata. Siapakah aku?", options: ["Awan", "Hantu", "Kupu-kupu", "Angin"], a: 0 }, // Awan
+                { q: "Apa yang lebih ringan dari bulu, tapi tidak bisa ditahan oleh orang terkuat sekalipun?", options: ["Angin", "Napas", "Bayangan", "Tidur"], a: 1 }, // Napas
+                { q: "Apa yang dimiliki semua orang, tetapi tidak bisa hilang?", options: ["Uang", "Nama", "Bayangan", "Rasa Lapar"], a: 1 }, // Nama
+            ],
+            Essay: [
+                { q: "Jika Anda bisa menjadi penemu, apa yang akan Anda ciptakan untuk memecahkan masalah lingkungan?", a: "kreatif" },
+                { q: "Jelaskan mengapa kerjasama tim itu penting dalam membuat game, menurut pandanganmu.", a: "kreatif" },
+                { q: "Apa yang membuat cerita fiksi ilmiah menarik? Sebutkan tiga alasannya.", a: "kreatif" },
+                { q: "Bagaimana cara kerja internet sederhana? Jelaskan dalam 3 kalimat.", a: "kreatif" },
+                { q: "Tuliskan 3 hal yang Anda syukuri hari ini.", a: "kreatif" },
+                { q: "Apa perbedaan antara fakta dan opini? Berikan satu contoh untuk masing-masing.", a: "kreatif" },
+                { q: "Jika Anda memiliki kekuatan super apa pun, apa itu dan bagaimana Anda akan menggunakannya untuk kebaikan?", a: "kreatif" },
+                { q: "Jelaskan langkah-langkah untuk membuat kue bolu (minimal 3 langkah).", a: "kreatif" },
+                { q: "Mengapa penting untuk belajar Bahasa Jepang di era digital?", a: "kreatif" },
+                { q: "Tuliskan sebuah puisi pendek (4 baris) tentang hujan.", a: "kreatif" },
+            ]
+        };
+        const RIDDLE_COUNT = 10;
+        let activeRiddles = [];
+        let currentRiddleIndex = 0;
+        let riddleScore = 0;
+        let riddleCompleted = false;
+
+        window.selectRiddleLevel = function(level) {
+            currentRiddleLevel = level;
+            riddleCompleted = false;
+            riddleScore = 0;
+            currentRiddleIndex = 0;
+            activeRiddles = getRandomRiddles(level);
+            renderContent('game');
+        }
+
+        function getRandomRiddles(level) {
+            const pool = [...TEKA_TEKI_BANK[level]];
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            return pool.slice(0, RIDDLE_COUNT);
+        }
+
+        function renderGameView(profile) {
+            setBibbleMessage(`Kita main Teka-Teki! Pilih tingkat kesulitan untuk menguji otakmu!`);
+            
+            if (currentRiddleLevel === 'menu') {
+                return renderRiddleMenu(profile);
+            } else if (riddleCompleted) {
+                return renderRiddleResult(profile);
+            } else {
+                return renderActiveRiddle(profile);
+            }
+        }
+
+        function renderRiddleMenu(profile) {
+            return `
+                <section class="card p-6 md:p-10">
+                    <h2 class="text-3xl font-extrabold text-red-600 mb-6">🕹️ Teka-Teki Bibble</h2>
+                    <p class="text-gray-700 mb-6">Pilih tingkat kesulitan teka-teki (10 soal per level):</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <button onclick="selectRiddleLevel('Hard')" class="game-btn bg-black hover:bg-gray-800 text-white p-6 rounded-xl text-xl font-bold shadow-lg transition duration-150 transform hover:scale-105">
+                            1. Hard (Sulit)
+                            <p class="text-sm font-normal mt-1 text-red-400">Skor Tertinggi: ${userProfile.highScoreHard || 0}</p>
+                        </button>
+                        <button onclick="selectRiddleLevel('Medium')" class="game-btn bg-red-500 hover:bg-red-600 text-white p-6 rounded-xl text-xl font-bold shadow-lg transition duration-150 transform hover:scale-105">
+                            2. Medium (sedang)
+                            <p class="text-sm font-normal mt-1 text-yellow-300">Skor Tertinggi: ${userProfile.highScoreMedium || 0}</p>
+                        </button>
+                        <button onclick="selectRiddleLevel('Essay')" class="game-btn bg-yellow-500 hover:bg-yellow-600 text-gray-900 p-6 rounded-xl text-xl font-bold shadow-lg transition duration-150 transform hover:scale-105">
+                            3. Essay (Tulis Jawaban)
+                            <p class="text-sm font-normal mt-1 text-gray-700">Skor Tidak Diukur. Kreativitas Dinilai!</p>
+                        </button>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderRiddleResult(profile) {
+            const isScored = currentRiddleLevel !== 'Essay';
+            const subjectKey = currentRiddleLevel === 'Hard' ? 'highScoreHard' : 'highScoreMedium';
+            
+            if (isScored && riddleScore > profile[subjectKey]) {
+                profile[subjectKey] = riddleScore;
+                saveProfile(profile);
+            }
+
+            setBibbleMessage(isScored 
+                ? `HEBAT! Kamu dapat ${riddleScore}/${RIDDLE_COUNT}. Skor tertinggi barumu di level ${currentRiddleLevel} adalah ${profile[subjectKey]}!`
+                : `Luar Biasa! Jawaban Essay kamu sudah Bibble baca. Sekarang, coba level lain!`);
+
+            return `
+                <section class="card p-6 md:p-10 text-center">
+                    <h2 class="text-3xl font-extrabold text-red-600 mb-4">🎉 Teka-Teki Selesai!</h2>
+                    ${isScored ? `
+                        <p class="text-lg text-gray-700">Skor Akhir Level ${currentRiddleLevel}:</p>
+                        <p class="text-6xl font-black text-red-600 my-4">${riddleScore}/${RIDDLE_COUNT}</p>
+                        <p class="text-gray-600">Skor Tertinggi Level ini: ${profile[subjectKey]}</p>
+                    ` : `
+                        <p class="text-2xl font-black text-gray-800 my-4">Jawaban Essay Selesai!</p>
+                        <p class="text-gray-600">Terima kasih sudah menjawab dengan kreatif. Nilai kamu adalah usaha kerasmu!</p>
+                    `}
+                    <button onclick="selectRiddleLevel('menu')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-150 mt-6 transform hover:scale-105">
+                        Pilih Level Lain &rarr;
+                    </button>
+                </section>
+            `;
+        }
+
+        function renderActiveRiddle(profile) {
+            const qData = activeRiddles[currentRiddleIndex];
+            
+            return `
+                <section class="card p-6 md:p-10">
+                    <h2 class="text-3xl font-extrabold text-red-600 mb-2">🕹️ Teka-Teki Level ${currentRiddleLevel}</h2>
+                    <p class="text-gray-700 mb-6 font-semibold">Soal: ${currentRiddleIndex + 1} dari ${RIDDLE_COUNT}. Skor: ${riddleScore}</p>
+
+                    <div id="riddle-area" class="bg-gray-50 p-6 rounded-lg border-4 border-red-500 shadow-inner">
+                        <p class="text-xl font-black text-gray-900 mb-6">${qData.q}</p>
+                        
+                        ${currentRiddleLevel !== 'Essay' ? 
+                            // Pilihan Ganda / Hard / Medium
+                            `<div id="options-container" class="space-y-3">
+                                ${qData.options.map((option, index) => `
+                                    <button onclick="checkRiddleAnswer(${index})" 
+                                        class="riddle-option w-full text-left bg-gray-200 hover:bg-red-100 text-gray-800 font-medium py-3 px-4 rounded-lg transition duration-150 border border-gray-300 transform hover:scale-[1.02]">
+                                        ${String.fromCharCode(65 + index)}. ${option}
+                                    </button>
+                                `).join('')}
+                            </div>`
+                        : 
+                            // Essay
+                            `<textarea id="essay-answer" rows="5" placeholder="Tulis jawaban kreatifmu di sini..." class="w-full p-3 border-2 border-gray-300 rounded-lg text-gray-800 focus:border-red-500"></textarea>
+                            <button onclick="checkRiddleAnswer('essay')" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-full shadow-md transition transform hover:scale-[1.01]">
+                                Kirim Jawaban
+                            </button>`
+                        }
+                    </div>
+                </section>
+            `;
+        }
+
+        window.checkRiddleAnswer = function(answer) {
+            if (riddleCompleted) return;
+
+            if (currentRiddleLevel === 'Essay') {
+                const essayText = document.getElementById('essay-answer').value.trim();
+                if (essayText.length < 5) {
+                    displayStatus('Jawaban Essay terlalu pendek. Tulis lebih banyak!', true);
+                    return;
+                }
+                // Essay is always 'correct' if filled, as it's subjective/creative
+                riddleScore++; 
+                displayStatus('Jawaban Essay Diterima! Kreatif!', false);
+                setBibbleMessage("Jawaban kamu bagus sekali! Pikirkan jawabanku sebagai 'nilai' kamu ya.");
+                
+            } else {
+                // Multiple Choice / Hard / Medium
+                const qData = activeRiddles[currentRiddleIndex];
+                const isCorrect = answer === qData.a;
+                const options = document.querySelectorAll('.riddle-option');
+
+                options.forEach(btn => btn.disabled = true);
+
+                // Highlight correct answer
+                options[qData.a].classList.remove('bg-gray-200', 'hover:bg-red-100');
+                options[qData.a].classList.add('bg-green-500', 'text-white', 'font-black');
+
+                if (isCorrect) {
+                    riddleScore++;
+                    displayStatus('Benar!', false);
+                } else {
+                    // Highlight incorrect choice
+                    options[answer].classList.remove('bg-gray-200', 'hover:bg-red-100');
+                    options[answer].classList.add('bg-red-500', 'text-white');
+                    displayStatus('Salah.', true);
+                }
+                setBibbleMessage(isCorrect ? "Jawabanmu hebat!" : "Aduh, coba pikirkan lagi ya.");
+            }
+
+            setTimeout(() => {
+                currentRiddleIndex++;
+                if (currentRiddleIndex < RIDDLE_COUNT) {
+                    renderContent('game');
+                } else {
+                    riddleCompleted = true;
+                    // Update high scores only if applicable
+                    if (currentRiddleLevel === 'Hard') userProfile.highScoreHard = Math.max(userProfile.highScoreHard, riddleScore);
+                    if (currentRiddleLevel === 'Medium') userProfile.highScoreMedium = Math.max(userProfile.highScoreMedium, riddleScore);
+                    saveProfile(userProfile);
+                    renderContent('game');
+                }
+            }, 1500);
+        }
+
+        // ==========================================================
+        // 2. BELAJAR (Materi Lengkap)
+        // ==========================================================
+        
+        const BELAJAR_CONTENT = {
+            Matematika: {
+                color: 'bg-red-100 border-red-500 text-red-700',
+                sections: [
+                    { title: 'Konsep Dasar Aljabar', content: 'Aljabar adalah cabang Matematika yang menggunakan simbol (variabel) untuk mewakili bilangan. Contoh: 5x + 5 = 25. Tujuannya adalah menemukan nilai x.' },
+                    { title: 'Geometri: Bentuk Dasar', content: 'Pelajari bentuk-bentuk seperti Persegi ($L = s \\times s$), Segitiga ($L = \\frac{1}{2} \\times a \\times t$), dan Lingkaran ($K = 2\\pi r$). [Image of Bentuk-bentuk Geometri]' },
+                    { title: 'Operasi Bilangan Pecahan', content: 'Untuk menjumlahkan pecahan, samakan penyebutnya. Contoh: $\\frac{1}{3} + \\frac{1}{2} = \\frac{2}{6} + \\frac{3}{6} = \\frac{5}{6}$. [Image of Penjumlahan Pecahan]' }
+                ]
+            },
+            Informatika: {
+                color: 'bg-gray-100 border-gray-500 text-gray-700',
+                sections: [
+                    { title: 'Komponen Komputer (Hardware)', content: 'Komputer terdiri dari CPU (otak), RAM (memori cepat sementara), dan SSD/HDD (penyimpanan permanen). ' },
+                    { title: 'Dasar Pemrograman (Algoritma)', content: 'Algoritma adalah resep atau urutan langkah logis untuk menyelesaikan tugas. Dalam pemrograman, algoritma diubah menjadi kode. Algoritma harus logis dan berurutan.' },
+                    { title: 'Jaringan dan Internet', content: 'Internet adalah jaringan global yang menghubungkan komputer di seluruh dunia. Protokol utama seperti HTTP (untuk web) dan TCP/IP memastikan informasi terkirim dengan benar. ' }
+                ]
+            },
+            Akuntansi: {
+                color: 'bg-green-100 border-green-500 text-green-700',
+                sections: [
+                    { title: 'Persamaan Akuntansi', content: 'ASET = LIABILITAS + EKUITAS. Ini adalah rumus sakti akuntansi. Setiap transaksi harus menjaga keseimbangan persamaan ini.' },
+                    { title: 'Jurnal dan Siklus Akuntansi', content: 'Transaksi dicatat pertama di Jurnal Umum, kemudian dipindahkan ke Buku Besar. Siklus ini berakhir dengan Laporan Keuangan. [Image of Siklus Akuntansi]' },
+                    { title: 'Debit dan Kredit', content: 'Debit (D) adalah sisi kiri, Kredit (K) adalah sisi kanan. Pertambahan Aset dan Beban dicatat di Debit, sedangkan Liabilitas, Ekuitas, dan Pendapatan dicatat di Kredit. ' }
+                ]
+            },
+            BahasaJepang: {
+                color: 'bg-pink-100 border-pink-500 text-pink-700',
+                sections: [
+                    { title: 'Tiga Aksara Jepang', content: 'Jepang menggunakan tiga aksara: Hiragana (kata asli), Katakana (kata serapan), dan Kanji (karakter Tiongkok). ' },
+                    { title: 'Salam dan Perkenalan', content: 'Ohayou Gozaimasu (Selamat Pagi), Konnichiwa (Halo/Siang), Arigatou Gozaimasu (Terima Kasih Banyak). Saat memperkenalkan diri: Watashi wa [Nama] desu.' },
+                    { title: 'Tata Bahasa Dasar (Partikel)', content: 'Partikel seperti は (wa, topik), を (o, objek), dan に (ni, tempat/tujuan) sangat penting untuk membentuk kalimat. Contoh: Watashi wa gakusei desu (Saya adalah pelajar).' }
+                ]
+            }
+        };
+        let currentSubjectBelajar = 'Matematika';
+        let currentSectionIndex = 0;
+
+        function renderBelajar(profile) {
+            const content = BELAJAR_CONTENT[currentSubjectBelajar];
+            const activeSection = content.sections[currentSectionIndex];
+
+            return `
+                <section class="card p-6 md:p-10">
+                    <h2 class="text-3xl font-extrabold text-red-600 mb-4">📚 Zona Belajar Rarashome</h2>
+
+                    <!-- Pilihan Mata Pelajaran -->
+                    <div class="flex flex-wrap gap-2 mb-6">
+                        ${Object.keys(BELAJAR_CONTENT).map(subject => `
+                            <button onclick="changeSubjectBelajar('${subject}', 0)" class="px-4 py-2 text-sm font-black rounded-full transition duration-150 
+                                ${currentSubjectBelajar === subject ? 'bg-red-500 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                                ${subject.replace(/([A-Z])/g, ' $1').trim()}
+                            </button>
+                        `).join('')}
+                    </div>
+
+                    <!-- Konten Pelajaran -->
+                    <div class="p-6 ${content.color} rounded-xl border-l-8 border-r-8 border-dashed border-red-500">
+                        <h3 class="font-black text-2xl mb-2">${activeSection.title}</h3>
+                        <p class="text-gray-800 text-lg">${activeSection.content}</p>
+                    </div>
+
+                    <!-- Navigasi Seksi -->
+                    <div class="flex justify-between mt-4">
+                        <button onclick="prevSection()" ${currentSectionIndex === 0 ? 'disabled' : ''} class="bg-gray-400 disabled:bg-gray-300 text-white font-bold py-2 px-4 rounded-lg transition duration-150">
+                            &larr; Sebelumnya
+                        </button>
+                        <button onclick="nextSection()" ${currentSectionIndex === content.sections.length - 1 ? 'disabled' : ''} class="bg-red-500 disabled:bg-red-300 text-white font-bold py-2 px-4 rounded-lg transition duration-150 transform hover:scale-105">
+                            Lanjut Materi &rarr;
+                        </button>
+                    </div>
+                </section>
+            `;
+        }
+
+        window.changeSubjectBelajar = function(subject, index) {
+            currentSubjectBelajar = subject;
+            currentSectionIndex = index;
+            renderContent('belajar');
+        }
+
+        window.nextSection = function() {
+            const content = BELAJAR_CONTENT[currentSubjectBelajar];
+            if (currentSectionIndex < content.sections.length - 1) {
+                currentSectionIndex++;
+                setBibbleMessage(`Materi baru! Fokus ya belajarnya.`);
+                renderContent('belajar');
+            }
+        }
+
+        window.prevSection = function() {
+            if (currentSectionIndex > 0) {
+                currentSectionIndex--;
+                setBibbleMessage(`Materi sebelumnya. Bagus, mengulang pelajaran!`);
+                renderContent('belajar');
+            }
+        }
+
+        // ==========================================================
+        // 3. KUIS (4 Mapel, 10 Soal Random) - Re-use Logic from v3
+        // ==========================================================
+
+        const QUIZ_BANK = {
+            Matematika: [
+                { q: "Hasil dari $12 \\times 8$?", options: ["88", "96", "104", "112"], a: 1 },
+                { q: "Jika $x - 5 = 12$, nilai $x$ adalah?", options: ["7", "17", "15", "60"], a: 1 },
+                { q: "Luas persegi dengan sisi 7 cm?", options: ["14 $\\text{cm}^2$", "28 $\\text{cm}^2$", "49 $\\text{cm}^2$", "70 $\\text{cm}^2$"], a: 2 },
+                { q: "Berapa hasil dari $\\frac{1}{5} + \\frac{3}{5}$?", options: ["$\frac{4}{10}$", "$\frac{2}{5}$", "$\frac{4}{5}$", "$1$"], a: 2 },
+                { q: "Angka $\\pi$ (Pi) kira-kira bernilai...", options: ["3.14", "2.71", "1.61", "4.00"], a: 0 },
+                { q: "Berapa hasil dari $\\sqrt{144}$?", options: ["10", "11", "12", "13"], a: 2 },
+                { q: "Hitunglah $2^4$", options: ["6", "8", "16", "32"], a: 2 },
+                { q: "Persamaan $2x + 10 = 20$, nilai $x$ adalah?", options: ["5", "10", "15", "20"], a: 0 },
+                { q: "Jenis segitiga yang semua sisinya sama panjang?", options: ["Siku-siku", "Sama Kaki", "Sama Sisi", "Sembarang"], a: 2 },
+                { q: "Faktorisasi dari $x^2 - 4$ adalah...", options: ["$(x-2)(x+2)$", "$(x-4)(x+4)$", "$(x-2)^2$", "$x(x-4)$"], a: 0 },
+                { q: "Nilai mutlak $|-9|$ adalah...", options: ["$-9$", "$0$", "$9$", "$18$"], a: 2 },
+                { q: "Suhu beku air dalam Celcius?", options: ["$-10\\text{°C}$", "$0\\text{°C}$", "$10\\text{°C}$", "$100\\text{°C}$"], a: 1 },
+            ],
+            Informatika: [
+                { q: "Apa fungsi utama dari CPU?", options: ["Menyimpan data", "Mengolah data", "Mencetak dokumen", "Menghubungkan jaringan"], a: 1 },
+                { q: "HTML adalah singkatan dari...", options: ["Hyper Tool Markup Language", "High Text Management Link", "HyperText Markup Language", "Hyperlink and Text Manager"], a: 2 },
+                { q: "Apa yang dimaksud dengan *Bug* dalam pemrograman?", options: ["Program baru", "Kesalahan kode", "Tampilan desain", "Perintah cepat"], a: 1 },
+                { q: "Manakah perangkat lunak (Software)?", options: ["Keyboard", "Mouse", "Microsoft Word", "Monitor"], a: 2 },
+                { q: "Unit terkecil dari data di komputer?", options: ["Byte", "Bit", "Kilobyte", "Megabyte"], a: 1 },
+                { q: "Apa nama protokol untuk alamat web?", options: ["FTP", "SMTP", "HTTP", "USB"], a: 2 },
+                { q: "Apa itu *Cloud* dalam *Cloud Computing*?", options: ["Komputer fisik di rumah", "Jaringan penyimpanan di internet", "Program desain", "Media sosial"], a: 1 },
+                { q: "Perintah untuk mematikan komputer adalah...", options: ["Run", "Restart", "Shutdown", "Hibernate"], a: 2 },
+                { q: "Apa itu *Operating System* (OS)?", options: ["Aplikasi Game", "Sistem operasi (misalnya Windows)", "Kabel listrik", "Driver printer"], a: 1 },
+                { q: "RAM menyimpan data secara...", options: ["Permanen", "Sementara", "Di awan", "Terenkripsi"], a: 1 },
+                { q: "Bagian komputer yang menyimpan data jangka panjang?", options: ["CPU", "RAM", "SSD/HDD", "Motherboard"], a: 2 },
+            ],
+            Akuntansi: [
+                { q: "Aset = Liabilitas + ...", options: ["Pendapatan", "Beban", "Modal (Ekuitas)", "Utang"], a: 2 },
+                { q: "Akun Kas termasuk dalam kelompok...", options: ["Liabilitas", "Ekuitas", "Pendapatan", "Aset"], a: 3 },
+                { q: "Pencatatan pertama kali transaksi dilakukan di...", options: ["Buku Besar", "Neraca Saldo", "Laporan Laba Rugi", "Jurnal Umum"], a: 3 },
+                { q: "Jika Aset bertambah, dicatat di sisi...", options: ["Kredit", "Debit", "Tengah", "Bawah"], a: 1 },
+                { q: "Laba Bersih dihitung dari...", options: ["Aset - Liabilitas", "Pendapatan - Beban", "Kas - Bank", "Modal Akhir - Modal Awal"], a: 1 },
+                { q: "Kewajiban jangka pendek perusahaan disebut...", options: ["Piutang", "Liabilitas Lancar", "Modal", "Aset Tetap"], a: 1 },
+                { q: "Amortisasi dan Depresiasi termasuk...", options: ["Pendapatan", "Beban", "Aset", "Ekuitas"], a: 1 },
+                { q: "Peralatan yang dibeli secara tunai akan mempengaruhi akun...", options: ["Kas dan Utang", "Kas dan Modal", "Kas dan Peralatan", "Peralatan dan Piutang"], a: 2 },
+                { q: "Laporan yang menunjukkan performa perusahaan selama periode tertentu?", options: ["Neraca", "Laporan Arus Kas", "Laporan Laba Rugi", "Laporan Perubahan Modal"], a: 2 },
+                { q: "Pengambilan uang perusahaan oleh pemilik untuk keperluan pribadi?", options: ["Investasi", "Dividen", "Prive", "Beban"], a: 2 },
+                { q: "Piutang usaha termasuk kelompok...", options: ["Liabilitas", "Aset", "Beban", "Pendapatan"], a: 1 },
+                { q: "Apa itu Harga Pokok Penjualan (HPP)?", options: ["Harga jual barang", "Biaya pembuatan barang yang terjual", "Beban iklan", "Gaji karyawan"], a: 1 },
+            ],
+            BahasaJepang: [
+                { q: "Apa arti dari 'Ohayou Gozaimasu'?", options: ["Selamat Malam", "Sampai Jumpa", "Selamat Pagi", "Apa Kabar"], a: 2 },
+                { q: "Huruf untuk kata serapan asing?", options: ["Hiragana", "Katakana", "Kanji", "Romaji"], a: 1 },
+                { q: "Angka '5' dalam Bahasa Jepang?", options: ["Shi", "Go", "Roku", "Nana"], a: 1 },
+                { q: "Bagaimana cara mengucapkan 'Terima Kasih'?", options: ["Gomen Nasai", "Sayounara", "Arigatou", "Daijoubu"], a: 2 },
+                { q: "Partikel 'も' (mo) memiliki arti...", options: ["Juga", "Dari", "Ke", "Di"], a: 0 },
+                { q: "Kata untuk 'Sekolah'?", options: ["Byouin", "Gakkou", "Eiga", "Uchi"], a: 1 },
+                { q: "Aksara manakah yang paling banyak digunakan dalam tulisan formal?", options: ["Hiragana", "Katakana", "Kanji", "Romaji"], a: 2 },
+                { q: "Bagaimana menulis 'kucing' (neko) dalam Hiragana?", options: ["ねこ", "ネコ", "ねこ", "いぬ"], a: 0 },
+                { q: "Jika Anda ingin meminta maaf, Anda akan berkata...", options: ["Konnichiwa", "Sumimasen", "Otsukare", "Itadakimasu"], a: 1 },
+                { q: "Bagaimana urutan kalimat dasar Jepang?", options: ["S-V-O", "S-O-V", "V-S-O", "O-S-V"], a: 1 },
+                { q: "Apa arti dari 'Mizu'?", options: ["Api", "Tanah", "Angin", "Air"], a: 3 },
+                { q: "Apa kata sifat 'kecil'?", options: ["Ōkii", "Chīsai", "Takai", "Hajime"], a: 1 },
+            ],
+        };
+        const QUIZ_COUNT = 10;
+        let selectedQuizSubject = null;
+        let activeQuiz = [];
+        let currentQuizIndex = 0;
+        let quizScore = 0;
+        let quizCompleted = false;
+
+        function getQuizQuestions(subject) {
+            const pool = [...QUIZ_BANK[subject]];
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            return pool.slice(0, QUIZ_COUNT);
+        }
+        
+        function clearQuizState() {
+            selectedQuizSubject = null;
+            activeQuiz = [];
+            currentQuizIndex = 0;
+            quizScore = 0;
+            quizCompleted = false;
+        }
+
+        function initQuiz() {
+            if (!selectedQuizSubject || quizCompleted) {
+                renderContent('kuis');
+            }
+        }
+
+        window.selectQuizSubject = function(subject) {
+            selectedQuizSubject = subject;
+            quizCompleted = false;
+            startNewQuiz(subject);
+            renderContent('kuis');
+        }
+
+        function startNewQuiz(subject) {
+            activeQuiz = getQuizQuestions(subject);
+            currentQuizIndex = 0;
+            quizScore = 0;
+            quizCompleted = false;
+        }
+
+        function renderKuis(profile) {
+            if (!selectedQuizSubject || quizCompleted) {
+                return renderQuizMenuOrResult(profile);
+            }
+
+            const qData = activeQuiz[currentQuizIndex];
+            const subjectName = selectedQuizSubject.replace(/([A-Z])/g, ' $1').trim();
+
+            return `
+                <section class="card p-6 md:p-10">
+                    <h2 class="text-3xl font-extrabold text-red-600 mb-2">🧠 Kuis: ${subjectName}</h2>
+                    <p class="text-gray-700 mb-6 font-semibold">Soal: ${currentQuizIndex + 1} dari ${QUIZ_COUNT}. Skor Sementara: ${quizScore}</p>
+
+                    <div id="quiz-area" class="bg-gray-50 p-6 rounded-lg border-4 border-red-500 shadow-inner">
+                        <p class="text-xl font-black text-gray-900 mb-6">${qData.q}</p>
+                        
+                        <div id="options-container" class="space-y-3">
+                            ${qData.options.map((option, index) => `
+                                <button onclick="checkQuizAnswer(${index})" 
+                                    class="quiz-option w-full text-left bg-gray-200 hover:bg-red-100 text-gray-800 font-medium py-3 px-4 rounded-lg transition duration-150 border border-gray-300 transform hover:scale-[1.02]">
+                                    ${String.fromCharCode(65 + index)}. ${option}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderQuizMenuOrResult(profile) {
+            if (quizCompleted) {
+                setBibbleMessage(`Hore! Kuis sudah selesai. Nilai kamu ${quizScore} dari 10! Coba lagi?`);
+                return `
+                    <section class="card p-6 md:p-10 text-center">
+                        <h2 class="text-3xl font-extrabold text-red-600 mb-4">🎉 Kuis Selesai!</h2>
+                        <p class="text-lg text-gray-700">Skor Akhir Anda di ${selectedQuizSubject.replace(/([A-Z])/g, ' $1').trim()}:</p>
+                        <p class="text-6xl font-black text-red-600 my-4">${quizScore}/${QUIZ_COUNT}</p>
+                        <p class="text-gray-600">Total Anda telah mencoba kuis ini ${profile.quizAttempts[selectedQuizSubject] || 1} kali.</p>
+                        <button onclick="resetQuiz()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-150 mt-6 transform hover:scale-105">
+                            Pilih Kuis Lain &rarr;
+                        </button>
+                    </section>
+                `;
+            } else {
+                return `
+                    <section class="card p-6 md:p-10">
+                        <h2 class="text-3xl font-extrabold text-red-600 mb-6">Pilih Mata Pelajaran Kuis</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${Object.keys(QUIZ_BANK).map(subject => `
+                                <button onclick="selectQuizSubject('${subject}')" class="bg-red-500 hover:bg-red-600 text-white font-bold p-6 rounded-xl text-xl shadow-lg transition duration-150 transform hover:scale-105">
+                                    ${subject.replace(/([A-Z])/g, ' $1').trim()} (${QUIZ_COUNT} Soal)
+                                </button>
+                            `).join('')}
+                        </div>
+                    </section>
+                `;
+            }
+        }
+
+        window.checkQuizAnswer = function(selectedIndex) {
+            if (quizCompleted) return;
+
+            const qData = activeQuiz[currentQuizIndex];
+            const isCorrect = selectedIndex === qData.a;
+            const options = document.querySelectorAll('.quiz-option');
+
+            options.forEach(btn => btn.disabled = true);
+
+            // Highlight correct answer
+            options[qData.a].classList.remove('bg-gray-200', 'hover:bg-red-100');
+            options[qData.a].classList.add('bg-green-500', 'text-white', 'font-black');
+
+            if (isCorrect) {
+                quizScore++;
+                displayStatus('Benar!', false);
+            } else {
+                // Highlight incorrect choice
+                options[selectedIndex].classList.remove('bg-gray-200', 'hover:bg-red-100');
+                options[selectedIndex].classList.add('bg-red-500', 'text-white');
+                displayStatus('Salah.', true);
+            }
+            
+            setBibbleMessage(isCorrect ? "Jawabanmu hebat!" : "Aduh, coba belajar lagi ya.");
+
+            setTimeout(() => {
+                currentQuizIndex++;
+                if (currentQuizIndex < QUIZ_COUNT) {
+                    renderContent('kuis');
+                } else {
+                    quizCompleted = true;
+                    userProfile.lastQuizScore = quizScore;
+                    userProfile.totalQuizAttempts = (userProfile.totalQuizAttempts || 0) + 1;
+                    userProfile.quizAttempts[selectedQuizSubject] = (userProfile.quizAttempts[selectedQuizSubject] || 0) + 1;
+                    saveProfile(userProfile);
+                    renderContent('kuis');
+                }
+            }, 1500);
+        }
+
+        window.resetQuiz = function() {
+            clearQuizState();
+            renderContent('kuis');
+        }
+
+        // ==========================================================
+        // 4. PROFIL
+        // ==========================================================
+
+        function renderProfil(profile) {
+            return `
+                <section class="card p-6 md:p-10">
+                    <h2 class="text-3xl font-extrabold text-red-600 mb-6">👤 Profil Pemain Rarashome</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 bg-gray-100 rounded-lg">
+                            <span class="font-semibold text-gray-600 block">ID Pengguna (Untuk Dibagikan):</span>
+                            <span class="mt-1 block break-all text-sm md:text-base font-mono text-gray-800 bg-gray-200 p-1 rounded">${userId}</span>
+                        </div>
+
+                        <div class="flex flex-col md:flex-row md:items-center p-4 bg-red-100 rounded-lg">
+                            <span class="font-semibold text-gray-600 w-full md:w-1/3">Nama Panggilan:</span>
+                            <input id="profile-name-input" type="text" value="${profile.name}" class="w-full md:w-2/3 p-2 border border-red-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150 text-gray-800">
+                        </div>
+
+                        <button onclick="saveName()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-full shadow-md transition duration-150 transform hover:scale-[1.01]">
+                            Simpan Nama Profil
+                        </button>
+
+                        <div class="p-4 bg-green-100 rounded-lg">
+                            <h3 class="text-xl font-bold text-green-700 mb-2">Statistik Kemajuan Teka-Teki</h3>
+                            <p class="text-gray-700">Skor Tertinggi Level Hard: <span class="font-black text-2xl text-green-600">${profile.highScoreHard}</span></p>
+                            <p class="text-gray-700">Skor Tertinggi Level Sedang: <span class="font-black text-2xl text-green-600">${profile.highScoreMedium}</span></p>
+                            
+                            <h3 class="text-xl font-bold text-green-700 mb-2 mt-4">Statistik Kuis</h3>
+                            <p class="text-gray-700">Skor Kuis Terakhir: <span class="font-bold text-lg">${profile.lastQuizScore}/${QUIZ_COUNT}</span></p>
+                            <p class="text-gray-700">Total Percobaan Kuis (Semua Mapel): <span class="font-bold text-lg">${profile.totalQuizAttempts}</span> kali</p>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+        
+        window.saveName = function() {
+            const nameInput = document.getElementById('profile-name-input');
+            const newName = nameInput.value.trim();
+            
+            if (newName && newName !== userProfile.name) {
+                userProfile.name = newName;
+                saveProfile(userProfile);
+                setBibbleMessage(`Nama kamu sudah diganti jadi ${newName}! Bagus!`);
+                displayStatus('Nama profil berhasil diperbarui!', false);
+            } else if (!newName) {
+                displayStatus('Nama tidak boleh kosong.', true);
+            }
+        }
+
+        // --- INISIALISASI APLIKASI ---
+
+        window.onload = function() {
+            initFirebase();
+            // Start with game view
+            setView('game');
+        }
+
+    </script>
+</body>
+</html>
