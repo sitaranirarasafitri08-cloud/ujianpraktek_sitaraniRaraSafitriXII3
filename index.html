@@ -511,8 +511,8 @@
                 color: 'bg-red-100 border-red-500 text-red-700',
                 sections: [
                     { title: 'Konsep Dasar Aljabar', content: 'Aljabar adalah cabang Matematika yang menggunakan simbol (variabel) untuk mewakili bilangan. Contoh: 5x + 5 = 25. Tujuannya adalah menemukan nilai x.' },
-                    { title: 'Geometri: Bentuk Dasar', content: 'Pelajari bentuk-bentuk seperti Persegi ($L = s \\times s$), Segitiga ($L = \\frac{1}{2} \\times a \\times t$), dan Lingkaran ($K = 2\\pi r$). [Image of Bentuk-bentuk Geometri]' },
-                    { title: 'Operasi Bilangan Pecahan', content: 'Untuk menjumlahkan pecahan, samakan penyebutnya. Contoh: $\\frac{1}{3} + \\frac{1}{2} = \\frac{2}{6} + \\frac{3}{6} = \\frac{5}{6}$. [Image of Penjumlahan Pecahan]' }
+                    { title: 'Geometri: Bentuk Dasar', content: 'Pelajari bentuk-bentuk seperti Persegi, Segitiga, dan Lingkaran .  },
+                    { title: 'Operasi Bilangan Pecahan', content: 'Untuk menjumlahkan pecahan, samakan penyebutnya. Contoh: 1/3 + 3 = 10/3' }
                 ]
             },
             Informatika: {
@@ -527,7 +527,7 @@
                 color: 'bg-green-100 border-green-500 text-green-700',
                 sections: [
                     { title: 'Persamaan Akuntansi', content: 'ASET = LIABILITAS + EKUITAS. Ini adalah rumus sakti akuntansi. Setiap transaksi harus menjaga keseimbangan persamaan ini.' },
-                    { title: 'Jurnal dan Siklus Akuntansi', content: 'Transaksi dicatat pertama di Jurnal Umum, kemudian dipindahkan ke Buku Besar. Siklus ini berakhir dengan Laporan Keuangan. [Image of Siklus Akuntansi]' },
+                    { title: 'Jurnal dan Siklus Akuntansi', content: 'Transaksi dicatat pertama di Jurnal Umum, kemudian dipindahkan ke Buku Besar. Siklus ini berakhir dengan Laporan Keuangan. ' },
                     { title: 'Debit dan Kredit', content: 'Debit (D) adalah sisi kiri, Kredit (K) adalah sisi kanan. Pertambahan Aset dan Beban dicatat di Debit, sedangkan Liabilitas, Ekuitas, dan Pendapatan dicatat di Kredit. ' }
                 ]
             },
@@ -609,18 +609,18 @@
 
         const QUIZ_BANK = {
             Matematika: [
-                { q: "Hasil dari $12 \\times 8$?", options: ["88", "96", "104", "112"], a: 1 },
-                { q: "Jika $x - 5 = 12$, nilai $x$ adalah?", options: ["7", "17", "15", "60"], a: 1 },
-                { q: "Luas persegi dengan sisi 7 cm?", options: ["14 $\\text{cm}^2$", "28 $\\text{cm}^2$", "49 $\\text{cm}^2$", "70 $\\text{cm}^2$"], a: 2 },
-                { q: "Berapa hasil dari $\\frac{1}{5} + \\frac{3}{5}$?", options: ["$\frac{4}{10}$", "$\frac{2}{5}$", "$\frac{4}{5}$", "$1$"], a: 2 },
-                { q: "Angka $\\pi$ (Pi) kira-kira bernilai...", options: ["3.14", "2.71", "1.61", "4.00"], a: 0 },
-                { q: "Berapa hasil dari $\\sqrt{144}$?", options: ["10", "11", "12", "13"], a: 2 },
-                { q: "Hitunglah $2^4$", options: ["6", "8", "16", "32"], a: 2 },
-                { q: "Persamaan $2x + 10 = 20$, nilai $x$ adalah?", options: ["5", "10", "15", "20"], a: 0 },
+                { q: "Hasil dari 12x - 6 = 54, nilai x adalah ?", options: ["5", "6", "1", "11"], a: 5 },
+                { q: "Jika 7x + 10y - 7 = 0, tentukan persamaan funsi aljabar tersebut, apabila ber-absis 5 ?", options: [" 28x - 28y + 10 =0", "35x+ 28y - 7 = 0", "25x - 28 -10 = 0", "35x - 28 - 7 = 0"], a: 35x - 28 - 7= 0 },
+                { q: "Yan memiliki sisi yang sama yaitu ?", options: ["segitiga", "persegi", "lingkaran", "trapesium"], a: persegi },
+                { q: "Berapa hasil dari 12/5 - 5 =?", options: ["13/5", "-13/25", "-13/5", "-8/5"], a: -13/5 },
+                { q: "Angka (pi) pada rasio keliling lingkaran dalam  kira-kira bernilai...", options: ["3.14", "2.71", "1.61", "4.00"], a: 3.14 },
+                { q: "Berapa hasil dari 30/360 x pi x 2 x r. diketahui r = 5?", options: ["5/6", "2", "2,62", "3.62"], a: 2,62 },
+                { q: "Hitunglah akar dari 25", options: ["6", "5", "16", "32"], a: 5 },
+                { q: "Persamaan 2x + 10 = 20, nilai x adalah?", options: ["5", "10", "15", "20"], a: 0 },
                 { q: "Jenis segitiga yang semua sisinya sama panjang?", options: ["Siku-siku", "Sama Kaki", "Sama Sisi", "Sembarang"], a: 2 },
-                { q: "Faktorisasi dari $x^2 - 4$ adalah...", options: ["$(x-2)(x+2)$", "$(x-4)(x+4)$", "$(x-2)^2$", "$x(x-4)$"], a: 0 },
-                { q: "Nilai mutlak $|-9|$ adalah...", options: ["$-9$", "$0$", "$9$", "$18$"], a: 2 },
-                { q: "Suhu beku air dalam Celcius?", options: ["$-10\\text{°C}$", "$0\\text{°C}$", "$10\\text{°C}$", "$100\\text{°C}$"], a: 1 },
+                { q: "Faktorisasi dari x^2 - 4 adalah...", options: ["(x-2)(x+2)", "(x-4)(x+4)", "(x-2)^2", "x(x-4)"], a: 0 },
+                { q: "Nilai mutlak |-9| adalah...", options: ["-9", "0", "9", "18"], a: 2 },
+                { q: "Suhu beku air dalam Celcius?", options: ["-10°C", "0°C", "10°C", "100°C"], a: 1 },
             ],
             Informatika: [
                 { q: "Apa fungsi utama dari CPU?", options: ["Menyimpan data", "Mengolah data", "Mencetak dokumen", "Menghubungkan jaringan"], a: 1 },
