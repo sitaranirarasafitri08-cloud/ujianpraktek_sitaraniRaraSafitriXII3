@@ -373,7 +373,7 @@
                             <p class="text-sm font-normal mt-1 text-red-400">Skor Tertinggi: ${userProfile.highScoreHard || 0}</p>
                         </button>
                         <button onclick="selectRiddleLevel('Medium')" class="game-btn bg-red-500 hover:bg-red-600 text-white p-6 rounded-xl text-xl font-bold shadow-lg transition duration-150 transform hover:scale-105">
-                            2. Medium (sedang)
+                            2. Sedang (Pilihan Ganda)
                             <p class="text-sm font-normal mt-1 text-yellow-300">Skor Tertinggi: ${userProfile.highScoreMedium || 0}</p>
                         </button>
                         <button onclick="selectRiddleLevel('Essay')" class="game-btn bg-yellow-500 hover:bg-yellow-600 text-gray-900 p-6 rounded-xl text-xl font-bold shadow-lg transition duration-150 transform hover:scale-105">
@@ -510,9 +510,9 @@
             Matematika: {
                 color: 'bg-red-100 border-red-500 text-red-700',
                 sections: [
-                    { title: 'Konsep Dasar Aljabar', content: 'Aljabar adalah cabang Matematika yang menggunakan simbol (variabel) untuk mewakili bilangan. Contoh: 5x + 5 = 25. Tujuannya adalah menemukan nilai x.' },
-                    { title: 'Geometri: Bentuk Dasar', content: 'Pelajari bentuk-bentuk seperti Persegi, Segitiga, dan Lingkaran .  },
-                    { title: 'Operasi Bilangan Pecahan', content: 'Untuk menjumlahkan pecahan, samakan penyebutnya. Contoh: 1/3 + 3 = 10/3' }
+                    { title: 'Konsep Dasar Aljabar', content: 'Aljabar adalah cabang Matematika yang menggunakan simbol (variabel) untuk mewakili bilangan. Contoh: $3x + 4 = 10$. Tujuannya adalah menemukan nilai $x$.' },
+                    { title: 'Geometri: Bentuk Dasar', content: 'Pelajari bentuk-bentuk seperti Persegi ($L = s \\times s$), Segitiga ($L = \\frac{1}{2} \\times a \\times t$), dan Lingkaran ($K = 2\\pi r$). [Image of Bentuk-bentuk Geometri]' },
+                    { title: 'Operasi Bilangan Pecahan', content: 'Untuk menjumlahkan pecahan, samakan penyebutnya. Contoh: $\\frac{1}{3} + \\frac{1}{2} = \\frac{2}{6} + \\frac{3}{6} = \\frac{5}{6}$. [Image of Penjumlahan Pecahan]' }
                 ]
             },
             Informatika: {
@@ -527,7 +527,7 @@
                 color: 'bg-green-100 border-green-500 text-green-700',
                 sections: [
                     { title: 'Persamaan Akuntansi', content: 'ASET = LIABILITAS + EKUITAS. Ini adalah rumus sakti akuntansi. Setiap transaksi harus menjaga keseimbangan persamaan ini.' },
-                    { title: 'Jurnal dan Siklus Akuntansi', content: 'Transaksi dicatat pertama di Jurnal Umum, kemudian dipindahkan ke Buku Besar. Siklus ini berakhir dengan Laporan Keuangan. ' },
+                    { title: 'Jurnal dan Siklus Akuntansi', content: 'Transaksi dicatat pertama di Jurnal Umum, kemudian dipindahkan ke Buku Besar. Siklus ini berakhir dengan Laporan Keuangan. [Image of Siklus Akuntansi]' },
                     { title: 'Debit dan Kredit', content: 'Debit (D) adalah sisi kiri, Kredit (K) adalah sisi kanan. Pertambahan Aset dan Beban dicatat di Debit, sedangkan Liabilitas, Ekuitas, dan Pendapatan dicatat di Kredit. ' }
                 ]
             },
@@ -609,13 +609,13 @@
 
         const QUIZ_BANK = {
             Matematika: [
-                { q: "Hasil dari 12x - 6 = 54, nilai x adalah ?", options: ["5", "6", "1", "11"], a: 5 },
-                { q: "Jika 7x + 10y - 7 = 0, tentukan persamaan funsi aljabar tersebut, apabila ber-absis 5 ?", options: [" 28x - 28y + 10 =0", "35x+ 28y - 7 = 0", "25x - 28 -10 = 0", "35x - 28 - 7 = 0"], a: 35x - 28 - 7= 0 },
-                { q: "Yan memiliki sisi yang sama yaitu ?", options: ["segitiga", "persegi", "lingkaran", "trapesium"], a: persegi },
-                { q: "Berapa hasil dari 12/5 - 5 =?", options: ["13/5", "-13/25", "-13/5", "-8/5"], a: -13/5 },
-                { q: "Angka (pi) pada rasio keliling lingkaran dalam  kira-kira bernilai...", options: ["3.14", "2.71", "1.61", "4.00"], a: 3.14 },
-                { q: "Berapa hasil dari 30/360 x pi x 2 x r. diketahui r = 5?", options: ["5/6", "2", "2,62", "3.62"], a: 2,62 },
-                { q: "Hitunglah akar dari 25", options: ["6", "5", "16", "32"], a: 5 },
+                { q: "Hasil dari 12x - 6 = 54, nilai x adalah ?", options: ["5", "6", "14", "12"], a: 1 },
+                { q: "Diketahui 7x + 10y - 7 = 0, tentukan persamaan funsi aljabar tersebut, apabila ber-absis 5 ?", options: ["28x - 28y + 10 =0", "35x+ 28y - 7 = 0", "25x - 28 -10 = 0", "35x - 28 - 7 = 0"], a: 1 },
+                { q: "Yang memiliki sisi yang sama yaitu ?", options: ["segitiga", "ligkaran", "tabung", "persegi"], a: 2 },
+                { q: "Berapa hasil dari 12/5 - 5 =?", options: ["10/25", "34/5", "-30/25", "-13/5"], a: 2 },
+                { q: "Angka (pi) pada rasio keliling lingkaran dalam  kira-kira bernilai...", options: ["3.14", "2.71", "1.61", "4.00"], a: 0 },
+                { q: "Berapa hasil dari 30/360 x pi x 2 x r. diketahui r = 5?", options: ["2,65", "2,62", "2", 13"], a: 2 },
+                { q: "Hitunglah 2^12", options: ["4.096", "2.000", "4.500", "2.400"], a: 2 },
                 { q: "Persamaan 2x + 10 = 20, nilai x adalah?", options: ["5", "10", "15", "20"], a: 0 },
                 { q: "Jenis segitiga yang semua sisinya sama panjang?", options: ["Siku-siku", "Sama Kaki", "Sama Sisi", "Sembarang"], a: 2 },
                 { q: "Faktorisasi dari x^2 - 4 adalah...", options: ["(x-2)(x+2)", "(x-4)(x+4)", "(x-2)^2", "x(x-4)"], a: 0 },
